@@ -32,10 +32,10 @@ sub html {
       <body>
         <$.date />
         <p>Hello <span id='name'></span></p>
-        <Lace-Footer copyright='2018'>
-          <Lace-Footer copyright='$.date' />
-          <Lace-Footer copyright='$$.date' />
-        </Lace-Footer>
+        <Lace-CommonX-Footer copyright='2018'>
+          <Lace-CommonX-Footer copyright='$.date' />
+          <Lace-CommonX-Footer copyright='$$.date' />
+        </Lace-CommonX-Footer>
       </body>
     </html>
   ];

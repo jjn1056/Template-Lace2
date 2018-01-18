@@ -36,9 +36,12 @@ has 'component_packages' => (
   
   sub _build_component_packages {
     my $self = shift;
+    my $search = ref($self->component_namespace) ?
+      $self->component_namespace :
+        [$self->component_namespace];
     my @packages = Module::Pluggable::Object->new(
       require => 1,
-      search_path => [ $self->component_namespace ],
+      search_path => $search,
     )->plugins;
     return \@packages;
   }
@@ -54,7 +57,9 @@ has 'components_by_ns' => (
     my $component_namespace = $self->component_namespace;
     my %global_config = $self->config;
     my %names = map {
-      my ($ns) = ($_=~/^$component_namespace\:\:(.+)$/);
+      #my ($ns) = ($_=~/^$component_namespace\:\:(.+)$/);
+      my $ns = $_;
+      $ns=~s/::/-/g;
       my $config = ($global_config{$ns}||+{});
       my $zoom = HTML::Zoom->new({ zconfig => $self->_zconfig })->from_html($_->html);
       $zoom = $_->init_zoom($zoom, $config);

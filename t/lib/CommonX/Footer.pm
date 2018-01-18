@@ -1,4 +1,4 @@
-package Components::Footer;
+package CommonX::Footer;
 
 use Moo;
 extends 'Template::Lace2::Component';

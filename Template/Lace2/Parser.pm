@@ -98,6 +98,8 @@ sub _toke_parser {
       if ($type eq 'E') {
           my ($tag, $text) = @$token;
           if(my ($component_name) = ($tag=~m/^Lace\-(.+)$/)) {
+            warn $tag;
+            warn $component_name;
               $handler->({
                   type => 'CLOSE',
                   name => $tag,
