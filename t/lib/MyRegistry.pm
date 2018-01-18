@@ -7,7 +7,7 @@ sub config {
   'Components-Hello' => sub {
     my ($self) = @_;
     return +{
-      footer => $self->create('CommonX-Footer', copyright=>2018),
+      footer => $self->create('CommonX-Footer', copyright=>2010),
     };
   },
 }

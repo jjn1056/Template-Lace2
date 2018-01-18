@@ -3,7 +3,7 @@ package CommonX::Footer;
 use Moo;
 extends 'Template::Lace2::Component';
 
-has 'copyright' => (is=>'ro', required=>1, default=>'2021');
+has 'copyright' => (is=>'ro', required=>1);
 has 'inner_events' => (is=>'ro', required=>0);
 
 sub process {

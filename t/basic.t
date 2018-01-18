@@ -17,5 +17,21 @@ ok 1;
 
 done_testing;
 
+__END__
 
+produces output like:
+
+<html>
+   <head>
+      <title>Hello World: Thu Jan 18 11:57:33 2018</title>
+   </head>
+   <body>
+      <$.date />
+      <p>Hello <span id='name'>Vanessa</span></p>
+      <p class="footer">Copyright 2018</p>
+      <p class="footer">Copyright 2020</p>
+      <p class="footer">Copyright 2022</p>
+      <p class="footer">Copyright 2010</p>
+   </body>
+</html>
 

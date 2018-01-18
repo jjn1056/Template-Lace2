@@ -14,11 +14,14 @@ sub init_zoom {
 
 sub process {
   my $self = shift;
+  my $footer = $self->footer->process;
+
   return $self->zoom
     ->select('#name')
     ->replace_content($self->name)
-      ->select('body')
-     ->append_content($self->footer->to_events);
+    ->select('body')
+    ->append_content($footer->to_events);
+
 }
 
 sub date { '2020' }
