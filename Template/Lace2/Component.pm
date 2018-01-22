@@ -28,6 +28,11 @@ sub to_html {
   $self->zoom->zconfig->producer->html_from_stream($self->zoom->to_stream, $ctx, $self);
 }
 
+sub to_zoom {
+  my ($self, $html) = @_;
+  return my $zoom = $self->registry->_zoom($html);
+}
+
 sub to_fh { shift->zoom->to_fh }
 sub to_stream { shift->zoom->to_stream }
 sub to_events { shift->zoom->to_events }

@@ -1,12 +1,10 @@
 package Template::Lace2::Registry;
 
 use Module::Pluggable::Object;
-use HTML::Zoom;
+use Template::Lace2::Zoom;
 use Template::Lace2::FilterBuilder;
 use Scalar::Util;
 use Moo;
-
-$HTML::Zoom::ZCONFIG_CLASS = 'Template::Lace2::ZConfig';
 
 sub config { return %{+{}} }
 
@@ -61,7 +59,7 @@ has 'components_by_ns' => (
       my $ns = $_;
       $ns=~s/::/-/g;
       my $config = ($global_config{$ns}||+{});
-      my $zoom = HTML::Zoom->new({ zconfig => $self->_zconfig })->from_html($_->html);
+      my $zoom = Template::Lace2::Zoom->new({ zconfig => $self->_zconfig })->from_html($_->html);
       $zoom = $_->init_zoom($zoom, $config);
       $ns => +{
         package => $_,
@@ -83,7 +81,7 @@ sub _zconfig {
 
 sub _zoom {
   my ($self, $src) = @_;
-  my $zoom = HTML::Zoom->new({ zconfig => $self->_zconfig })
+  my $zoom = Template::Lace2::Zoom->new({ zconfig => $self->_zconfig })
     ->from_html($src);
   return $zoom;
 }
@@ -94,7 +92,7 @@ sub create {
   my %info = %{ $self->components_by_ns->{$ns} || die "No component called '$ns'" };
   my $package = $info{package};
   my %config = $self->expand_config($info{config});
-  my $zoom = HTML::Zoom->new({ zconfig => $self->_zconfig })->from_events($info{events});
+  my $zoom = Template::Lace2::Zoom->new({ zconfig => $self->_zconfig })->from_events($info{events});
   my %prepared_arguments = $self->process_component_args($package,
     registry=>$self, zoom=>$zoom, %config, %args);
   my $component = eval {

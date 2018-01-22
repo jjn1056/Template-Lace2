@@ -53,6 +53,35 @@ sub html_from_events {
       $args{parent} = $parent;
       my $html = $self->_zconfig->registry->create($component, %args)->to_html($data);
       push @html, $html;
+    } elsif($event->{method} && $event->{type} eq 'OPEN') {
+      my $method_id = $event->{method_id};
+      my $method = $event->{method};
+      my @inner_events = ();
+      while(@$events) {
+        my $inner_event = shift(@$events);
+        if( ($inner_event->{method_id}||'') eq $method_id ) {
+          last;
+        } else {
+          push @inner_events, $inner_event;
+        }
+      }
+      my %args = %{$event->{attrs}};
+      my $target = $event->{target} eq 'self' ?
+        $data :
+          $event->{target} eq 'this' ?
+            $parent :
+              die "No target for $event->{target}";
+
+      if(my $cb = $target->can($method)) {
+        my $z = HTML::Zoom->new({ zconfig => $self->_zconfig })->from_events(\@inner_events);
+        my $response = $cb->($data, $z, %args);
+        my $method_events = Scalar::Util::blessed($response) ?
+          $response->to_events :
+            $self->_zconfig->registry->_zoom($response)->to_events;
+        unshift @$events, @{$method_events};
+      } else {
+        die "$target can't supported $method";
+      }
     } else {
       my $html = $self->event_to_html($event);
       push @html, $html;

@@ -27,6 +27,7 @@ sub _toke_parser {
   $parser->case_sensitive(1);# HTML::Parser downcases by default
 
   my %components = ();
+  my %methods = ();
 
   while (my $token = $parser->get_token) {
       my $type = shift @$token;
@@ -43,9 +44,7 @@ sub _toke_parser {
           }
 
           if(my ($component_name) = ($tag=~m/^Lace\-(.+)$/)) {
-
             $components{$component_name}++;
-
             foreach my $key(%{$attr}) {
               next unless $attr->{$key};
               if($attr->{$key} =~m/^\$*\./) {
@@ -73,6 +72,31 @@ sub _toke_parser {
                     is_in_place_close => 1,
                 });
                 $components{$component_name}--;
+            }
+          } elsif(my ($target, $method) = ($tag=~m/^([st]...)\.(.+)$/)) {
+            $methods{$target.'_'.$method}++;
+            $handler->({
+              type => 'OPEN',
+              name => $tag,
+              method => $method,
+              target => $target,
+              method_id => $target . '_' . $method . '_' . $methods{$target.'_'.$method},
+              attrs => $attr,
+              is_in_place_close => $in_place,
+              attr_names => $attrseq,
+              raw => $text,
+            });
+            if ($in_place) {
+                $handler->({
+                    type => 'CLOSE',
+                    name => $tag,
+                    method => $method,
+                    target => $target,
+                    method_id => $target . '_' . $method . '_' . $methods{$target.'_'.$method},
+                    raw => '', # don't emit $text for raw, match builtin behavior
+                    is_in_place_close => 1,
+                });
+                $methods{$target.'_'.$method}--;
             }
           } else {
             $handler->({
@@ -107,6 +131,17 @@ sub _toke_parser {
                   # is_in_place_close => 1  for br/> ??
               });
               $components{$component_name}--;
+          } elsif(my ($target, $method) = ($tag=~m/^([st]...)\.(.+)$/)) {
+              $handler->({
+                  type => 'CLOSE',
+                  name => $tag,
+                  raw => $text,
+                  target => $target,
+                  method => $method,
+                  method_id => $target . '_' . $method . '_' . $methods{$target.'_'.$method},,
+                  # is_in_place_close => 1  for br/> ??
+              });
+              $methods{$target.'_'.$method}--;
           } else {
               $handler->({
                   type => 'CLOSE',
