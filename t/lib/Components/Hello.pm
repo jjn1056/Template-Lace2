@@ -29,31 +29,33 @@ sub date { '2020' }
 
 sub section {
   my ($self, $inner, %args) = @_;
-  return $self->to_zoom('<section><Lace-CommonX-Footer copyright="2032" /></section>')
+  return $self->to_zoom('<section><lace.CommonX-Footer copyright="2032" /></section>')
     ->select('section')
     ->append_content($inner->to_events);
 }
 
-sub inline { '<Lace-CommonX-Footer copyright="2028" />' }
+sub inline { '<lace.CommonX-Footer copyright="2028" />' }
 
 sub html {
   return q[
     <html>
       <head>
-        <title>Hello World: </title>
+        <title>Hello World:&nbsp;</title>
       </head>
       <body>
         <self.inline />
         <self.section>
-        Hi
-          <self.section>Bye!</self.section>
+          Hi
+          <self.section>
+            Bye!
+          </self.section>
         </self.section>
         <p>Hello <span id='name'></span></p>
-        <Lace-CommonX-Footer copyright='2018'>
+        <lace.CommonX-Footer copyright='2018'>
            <p><this.date /></p>
-          <Lace-CommonX-Footer copyright='$.date' />
-          <Lace-CommonX-Footer copyright='$$.date' />
-        </Lace-CommonX-Footer>
+          <lace.CommonX-Footer copyright='$.date' />
+          <lace.CommonX-Footer copyright='$$.date' />
+        </lace.CommonX-Footer>
       </body>
     </html>
   ];

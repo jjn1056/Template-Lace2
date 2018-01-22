@@ -43,7 +43,7 @@ sub _toke_parser {
               chop $tag;
           }
 
-          if(my ($component_name) = ($tag=~m/^Lace\-(.+)$/)) {
+          if(my ($component_name) = ($tag=~m/^lace\.(.+)$/)) {
             $components{$component_name}++;
             foreach my $key(%{$attr}) {
               next unless $attr->{$key};
@@ -121,7 +121,7 @@ sub _toke_parser {
       # end tag
       if ($type eq 'E') {
           my ($tag, $text) = @$token;
-          if(my ($component_name) = ($tag=~m/^Lace\-(.+)$/)) {
+          if(my ($component_name) = ($tag=~m/^lace\.(.+)$/)) {
               $handler->({
                   type => 'CLOSE',
                   name => $tag,
