@@ -8,6 +8,12 @@ use Moo;
 
 sub config { return %{+{}} }
 
+has 'config' => (
+  is=>'ro',
+  required=>0,
+  predicate=>'has_init_arg_config',
+  reader=>'init_arg_config');
+
 has 'component_namespace' => (
   is=>'ro',
   required=>1,

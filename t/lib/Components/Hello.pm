@@ -27,6 +27,20 @@ sub process {
 
 sub date { '2020' }
 
+sub list { [
+  { val => 1 },  
+  { val => 2 },  
+  { val => 3 },  
+  { val => 4 },  
+]}
+
+sub li {
+  my ($self, $inner, %args) = @_;
+  return $self->to_zoom('<li>items</li>')
+    ->select('li')
+    ->replace_content($args{value});
+}
+
 sub section {
   my ($self, $inner, %args) = @_;
   return $self->to_zoom('<section><lace.CommonX-Footer copyright="2032" /></section>')
@@ -43,6 +57,9 @@ sub html {
         <title>Hello World:&nbsp;</title>
       </head>
       <body>
+        <ul>
+          <!-- self.li $this='$.list' value='$this.val' -->
+        </ul>
         <self.inline />
         <self.section>
           Hi
@@ -54,7 +71,9 @@ sub html {
         <lace.CommonX-Footer copyright='2018'>
            <p><this.date /></p>
           <lace.CommonX-Footer copyright='$.date' />
-          <lace.CommonX-Footer copyright='$$.date' />
+          <lace.CommonX-Footer copyright='$$.date'>
+            <b>fff</b>
+          </lace.CommonX-Footer>
         </lace.CommonX-Footer>
       </body>
     </html>

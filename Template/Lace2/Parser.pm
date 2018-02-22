@@ -26,9 +26,7 @@ sub _toke_parser {
   my $parser = HTML::TokeParser->new(\$text) or return $!;
   $parser->case_sensitive(1);# HTML::Parser downcases by default
 
-  my %components = ();
-  my %methods = ();
-
+  my %commands = ();
   while (my $token = $parser->get_token) {
       my $type = shift @$token;
 
@@ -43,8 +41,14 @@ sub _toke_parser {
               chop $tag;
           }
 
-          if(my ($component_name) = ($tag=~m/^lace\.(.+)$/)) {
-            $components{$component_name}++;
+          if(my ($target, $command) = ($tag=~m/^(.+?)\.(.+)$/)) {
+
+            # Ok, we got something that looks like a Lace command, for example
+            # lace.Master or self.user_list, and we need to parse all the
+            # attributes and setup meta data for the Producer.
+
+            # Parse attributes for something that looks like a data path, and
+            # if so we preparse it to save some time for the producer.
             foreach my $key(%{$attr}) {
               next unless $attr->{$key};
               if($attr->{$key} =~m/^\$*\./) {
@@ -52,51 +56,37 @@ sub _toke_parser {
               }
             }
 
+            # We need to track where we are in the tag hierarchy so that we
+            # properly nest commands.
+            $commands{$target.'_'.$command}++;
+
+            # Ok, now properly setup the metadata
             $handler->({
               type => 'OPEN',
               name => $tag,
-              component => $component_name,
-              component_id => $component_name . '_' . $components{$component_name},
-              attrs => $attr,
-              is_in_place_close => $in_place,
-              attr_names => $attrseq,
-              raw => $text,
-            });
-            if ($in_place) {
-                $handler->({
-                    type => 'CLOSE',
-                    name => $tag,
-                    component => $component_name,
-                    component_id => $component_name . '_' . $components{$component_name},
-                    raw => '', # don't emit $text for raw, match builtin behavior
-                    is_in_place_close => 1,
-                });
-                $components{$component_name}--;
-            }
-          } elsif(my ($target, $method) = ($tag=~m/^([st]...)\.(.+)$/)) {
-            $methods{$target.'_'.$method}++;
-            $handler->({
-              type => 'OPEN',
-              name => $tag,
-              method => $method,
+              command => $command,
               target => $target,
-              method_id => $target . '_' . $method . '_' . $methods{$target.'_'.$method},
+              command_id => $target . '_' . $command . '_' . $commands{$target.'_'.$command},
               attrs => $attr,
               is_in_place_close => $in_place,
               attr_names => $attrseq,
               raw => $text,
             });
+
+            # If this is an 'in place' tag ( <view.Include />
             if ($in_place) {
-                $handler->({
-                    type => 'CLOSE',
-                    name => $tag,
-                    method => $method,
-                    target => $target,
-                    method_id => $target . '_' . $method . '_' . $methods{$target.'_'.$method},
-                    raw => '', # don't emit $text for raw, match builtin behavior
-                    is_in_place_close => 1,
-                });
-                $methods{$target.'_'.$method}--;
+              $handler->({
+                type => 'CLOSE',
+                name => $tag,
+                command => $command,
+                target => $target,
+                command_id => $target . '_' . $command . '_' . $commands{$target.'_'.$command},
+                raw => '', # don't emit $text for raw, match builtin behavior
+                is_in_place_close => 1,
+              });
+
+              # Since its a self closing tag, we 'un-nest'
+              $commands{$target.'_'.$command}--;
             }
           } else {
             $handler->({
@@ -121,33 +111,24 @@ sub _toke_parser {
       # end tag
       if ($type eq 'E') {
           my ($tag, $text) = @$token;
-          if(my ($component_name) = ($tag=~m/^lace\.(.+)$/)) {
-              $handler->({
-                  type => 'CLOSE',
-                  name => $tag,
-                  raw => $text,
-                  component => $component_name,
-                  component_id => $component_name . '_' . $components{$component_name},
-                  # is_in_place_close => 1  for br/> ??
-              });
-              $components{$component_name}--;
-          } elsif(my ($target, $method) = ($tag=~m/^([st]...)\.(.+)$/)) {
+          if(my ($target, $command) = ($tag=~m/^(.+?)\.(.+)$/)) {
+
+              # ok, on the way out of a nested command, we need to mark the meta
+              # data correctly and also unnest the command level.
               $handler->({
                   type => 'CLOSE',
                   name => $tag,
                   raw => $text,
                   target => $target,
-                  method => $method,
-                  method_id => $target . '_' . $method . '_' . $methods{$target.'_'.$method},,
-                  # is_in_place_close => 1  for br/> ??
+                  command => $command,
+                  command_id => $target . '_' . $command . '_' . $commands{$target.'_'.$command},
               });
-              $methods{$target.'_'.$method}--;
+              $commands{$target.'_'.$command}--;
           } else {
               $handler->({
                   type => 'CLOSE',
                   name => $tag,
                   raw => $text,
-                  # is_in_place_close => 1  for br/> ??
               });
           }
       }
