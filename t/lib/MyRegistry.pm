@@ -4,10 +4,10 @@ use Moo;
 extends 'Template::Lace2::Registry';
 
 sub config {
-  'Components-Hello' => sub {
+  'Hello' => sub {
     my ($self) = @_;
     return +{
-      footer => $self->create('CommonX-Footer', copyright=>2010),
+      footer => $self->create('Footer', copyright=>2010),
     };
   },
 }

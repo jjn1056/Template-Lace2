@@ -17,7 +17,9 @@ sub html {
       </head>
       <body>
         <ul>
-          <li>list item one</li>
+          <ctx.items>
+            <li>list item one</li>
+          </ctx.items>
         </ul>
       </body>
     </html>

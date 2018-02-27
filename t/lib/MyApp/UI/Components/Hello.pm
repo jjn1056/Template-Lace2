@@ -1,8 +1,9 @@
-package Components::Hello;
+package MyApp::UI::Components::Hello;
 
 use Moo;
 extends 'Template::Lace2::Component';
 
+has 'age' => (is=>'ro', required=>1);
 has 'name' => (is=>'ro', required=>1);
 has 'footer' => (is=>'ro', required=>1);
 
@@ -17,10 +18,14 @@ sub process {
   my $footer = $self->footer->process;
 
   return $self->zoom
-    ->replace_content('#name', $self->name)
-    ->append_content('body', $footer->to_events)
+    ->select('#name')
+    ->replace_content($self->name)
+    ->select('body')
+    ->append_content($footer->to_events)
     ->then
-    ->append_content($self->to_zoom($self->inline));
+    ->append_content($self->to_zoom($self->inline))
+    ->then
+    ->append_content($self->age);
 }
 
 sub date { '2020' }
@@ -55,9 +60,6 @@ sub html {
         <title>Hello World:&nbsp;</title>
       </head>
       <body>
-        <ul>
-          <!-- self.li $this='$.list' value='$this.val' -->
-        </ul>
         <self.inline />
         <self.section>
           Hi
@@ -65,17 +67,32 @@ sub html {
             Bye!
           </self.section>
         </self.section>
-        <p>Hello <span lace_id='name' id='name'></span></p>
+        <p>Hello <span id='name'></span></p>
         <lace.Footer copyright='2018'>
            <p><this.date /></p>
           <lace.Footer copyright='$.date' />
-          <view.Footer copyright='$$.date'>
+          <lace.Footer copyright='$$.date'>
             <b>fff</b>
-          </view.Footer>
+          </lace.Footer>
         </lace.Footer>
       </body>
     </html>
   ];
 }
 
+sub todo_list {
+  my ($self, $zoom) = @_;
+  return $self->to_zoom(q[
+        <ul class="todo-list">
+          <view.ListItem task='$$.task' status='$$.status' />
+        </ul>
+    ])->select('.todo-list')
+    ->repeat_content([ map {
+      my $todo = $_; # $_->task, $_->status
+      sub {
+        $_->context($todo);
+        $_->to_html($todo);
+      }
+    } @{$self->list}])
+}
 1;

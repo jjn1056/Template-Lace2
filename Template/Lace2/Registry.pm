@@ -40,15 +40,29 @@ has 'component_packages' => (
   
   sub _build_component_packages {
     my $self = shift;
-    my $search = ref($self->component_namespace) ?
-      $self->component_namespace :
-        [$self->component_namespace];
-    my @packages = Module::Pluggable::Object->new(
-      require => 1,
-      search_path => $search,
-    )->plugins;
-    return \@packages;
+    my @search = ref($self->component_namespace) ?
+      @{$self->component_namespace} :
+        ($self->component_namespace);
+
+    my %packages = ();
+    foreach my $search(@search) {
+      my @packages = Module::Pluggable::Object->new(
+        require => 1,
+        search_path => $search,
+      )->plugins;
+      $packages{$search} = \@packages;
+    }
+    return \%packages;
   }
+
+sub normalized_config {
+  my $self = shift;
+  my %normalized_config = $self->config;
+  if($self->has_init_arg_config) {
+    %normalized_config = (%normalized_config, %{$self->init_arg_config});
+  }
+  return %normalized_config;
+}
 
 has 'components_by_ns' => (
   is=>'ro',
@@ -58,21 +72,30 @@ has 'components_by_ns' => (
 
   sub _build_components_by_ns {
     my $self = shift;
-    my $component_namespace = $self->component_namespace;
-    my %global_config = $self->config;
-    my %names = map {
-      #my ($ns) = ($_=~/^$component_namespace\:\:(.+)$/);
-      my $ns = $_;
-      $ns=~s/::/-/g;
-      my $config = ($global_config{$ns}||+{});
-      my $zoom = Template::Lace2::Zoom->new({ zconfig => $self->_zconfig })->from_html($_->html);
-      $zoom = $_->init_zoom($zoom, $config);
-      $ns => +{
-        package => $_,
-        events => $zoom->to_events,
-        config => $config,
-      };
-    } @{$self->component_packages};
+    my %normalized_config = $self->normalized_config;
+    my %component_packages = %{$self->component_packages};
+    my %names = ();
+
+    foreach my $ns (keys %component_packages) {
+      foreach my $package (@{$component_packages{$ns}}) {
+        my ($name) = ($package=~/^$ns\:\:(.+)$/);
+        my $config = ($normalized_config{$name}||+{});
+  
+        my $zoom = Template::Lace2::Zoom
+          ->new({ zconfig => $self->_zconfig })
+          ->from_html($package->html);
+
+        $zoom = $package->init_zoom($zoom, $config);
+
+        $names{$name} = +{
+          package => $package,
+          events => $zoom->to_events,
+          config => $config,
+        };
+
+      }
+    }
+
     return \%names;
   }
 

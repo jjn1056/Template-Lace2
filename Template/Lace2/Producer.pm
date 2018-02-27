@@ -77,7 +77,8 @@ sub html_from_events {
         $args{inner_events} = \@inner_events if @inner_events;
         $args{container} = $data;
         $args{parent} = $parent;
-        my $html = $self->_zconfig->registry->create($command, %args)->to_html($data);
+        my $command_namespace = $command; $command_namespace=~s/-/::/g;
+        my $html = $self->_zconfig->registry->create($command_namespace, %args)->to_html($data);
         push @html, $html;
       } elsif($target eq 'self') {  ## self.$method
         if(my $cb = $data->can($command)) {
