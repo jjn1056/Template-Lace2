@@ -36,7 +36,7 @@ sub COMPONENT {
   my $args = $class->merge_config_hashes($class->config, shift);
   my $registry_package = delete($args->{registry}) || $class->default_registry;
   unless($args->{component_namespace}) {
-    $args->{component_namespace} = $app .'::'.$class_part;
+    $args->{component_namespace} = $app .'::'.$class;
   }
   my $registry = Module::Runtime::use_module($registry_package)->new($args);
   return $class->new(registry=>$registry, _application=>$app);

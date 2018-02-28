@@ -75,24 +75,47 @@ sub html {
             <b>fff</b>
           </lace.Footer>
         </lace.Footer>
+        <self.todo_list />
       </body>
     </html>
   ];
 }
 
+
+use Template::Lace2::Zoom;
+
+sub class { 'e' }
+
+sub list_item {
+  my ($self, $inner, %args) = @_;
+  return "<li class='$args{class}'>$args{task}</li>";
+}
+
+
 sub todo_list {
   my ($self, $zoom) = @_;
   return $self->to_zoom(q[
         <ul class="todo-list">
-          <view.ListItem task='$$.task' status='$$.status' />
+          <self.list_item id="f" class='$.class' task='$$.task' />
         </ul>
     ])->select('.todo-list')
     ->repeat_content([ map {
       my $todo = $_; # $_->task, $_->status
       sub {
-        $_->context($todo);
-        $_->to_html($todo);
+        $self->process_commands($todo, $_)
+          ->select('li')
+          ->set_attribute({iidx=>'44'});
       }
-    } @{$self->list}])
+    } ({task=>'Milk'},{task=>'Dogs'})])
 }
+
+sub process_commands {
+  my ($self, $ctx, $stream) = @_;
+  my @events = @{$stream->{_array}||[]};
+  my $z1 = Template::Lace2::Zoom->new({ zconfig => $self->registry->_zconfig })->from_events(\@events);
+  my $html = $z1->zconfig->producer->html_from_stream($z1->to_stream, $self, $ctx);
+  my $z2 = Template::Lace2::Zoom->new({ zconfig => $self->registry->_zconfig })->from_html($html);
+  return $z2->to_stream;
+}
+
 1;
