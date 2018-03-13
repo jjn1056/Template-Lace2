@@ -109,6 +109,9 @@ sub todo_list {
     } ({task=>'Milk'},{task=>'Dogs'})])
 }
 
+#$z->select('this.list_item')
+#  ->process_command(class=>$self->class,task=>$_->task);
+
 sub process_commands {
   my ($self, $ctx, $stream) = @_;
   my @events = @{$stream->{_array}||[]};
@@ -119,3 +122,7 @@ sub process_commands {
 }
 
 1;
+
+<lace.ul class="todo-list" list_items="$.items">
+  <self.list_item id="f" class='$.class' task='$$.task' />  
+</ul>
