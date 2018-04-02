@@ -37,14 +37,8 @@ sub list { [
   { val => 4 },  
 ]}
 
-sub li {
-  my ($self, $inner, %args) = @_;
-  return $self->to_zoom('<li>items</li>')
-    ->select('li')
-    ->replace_content($args{value});
-}
 
-sub section {
+sub section($$) {
   my ($self, $inner, %args) = @_;
   return $self->to_zoom('<section><lace.Footer copyright="2032" /></section>')
     ->select('section')
@@ -69,26 +63,56 @@ sub html {
         </self.section>
         <p>Hello <span id='name'></span></p>
         <lace.Footer copyright='2018'>
-           <p><this.date /></p>
+           <p id="xxx"><this.date /></p>
           <lace.Footer copyright='$.date' />
           <lace.Footer copyright='$$.date'>
             <b>fff</b>
           </lace.Footer>
         </lace.Footer>
         <self.todo_list />
+        <hr/>
+        <lace.ul class="todo-list" list_items="$.items">
+          <self.li>
+            <self.li_in .='$this'>
+              My age is: <this.age /> and I live in <this.state />
+            </self.li_in>
+          </self.li>
+        </lace.ul>
       </body>
     </html>
   ];
 }
 
+sub li {
+  my ($self, $inner, %args) = @_;
+  return $inner;
+}
 
-use Template::Lace2::Zoom;
+sub li_in($) {
+  my ($self, $inner, %args) = @_;
+  return $self->to_zoom('<li>items</li>')
+    ->select('li')
+    ->replace_content($inner);
+    #   ->select('.age')
+    #  ->replace_content($args{age})
+    #  ->select('.state')
+    #  ->replace_content($args{state});
+}
+
+
+sub items {
+  return [
+    {age=>11, state=>'NY'},
+    {age=>21, state=>'TX'},
+    {age=>31, state=>'AL'},
+  ];
+}
 
 sub class { 'e' }
 
 sub list_item {
   my ($self, $inner, %args) = @_;
-  return "<li class='$args{class}'>$args{task}</li>";
+  return "<li classx='$args{classx}'>$args{task}</li>";
 }
 
 
@@ -96,21 +120,42 @@ sub todo_list {
   my ($self, $zoom) = @_;
   return $self->to_zoom(q[
         <ul class="todo-list">
-          <self.list_item id="f" class='$.class' task='$$.task' />
+          <self.list_item class='list' classx='$.class' task={task} />
         </ul>
     ])->select('.todo-list')
     ->repeat_content([ map {
-      my $todo = $_; # $_->task, $_->status
+      my $todo = $_;
       sub {
-        $self->process_commands($todo, $_)
-          ->select('li')
-          ->set_attribute({iidx=>'44'});
+          # 'self.list_item@task' => $todo->{task}
+          # 'self.list_item' => +{ task => $todo->{task} }
+          $_->set_attribute('self\.list_item' => { task => $todo->{task} })
       }
     } ({task=>'Milk'},{task=>'Dogs'})])
 }
 
-#$z->select('this.list_item')
-#  ->process_command(class=>$self->class,task=>$_->task);
+
+
+1;
+
+__END__
+
+<self.todo_list>
+  <self.list_item>
+    <li>TASK</li>
+  <self.list_item>
+</self.todo_list>
+
+
+use Template::Lace2::Zoom;
+
+[ list => +{ task=>$todo->{task} ]
+
+list => sub { $_->loop({task=>'Milk'},{task=>'Dogs'}) },
+
+my @tasks = ({task=>'Milk'},{task=>'Dogs'});
+my @commands = map {} @tasks
+
+->loop(@array_of_arrays||&sub,@array)
 
 sub process_commands {
   my ($self, $ctx, $stream) = @_;
@@ -121,8 +166,87 @@ sub process_commands {
   return $z2->to_stream;
 }
 
-1;
 
 <lace.ul class="todo-list" list_items="$.items">
   <self.list_item id="f" class='$.class' task='$$.task' />  
 </ul>
+
+
+sub ul::loop {
+  my ($self, $inner, $item_itr) = @_;
+  my $expanded_zoom = $self->zoom->select('ul')
+    ->loop(sub {
+      my $zoom$self->loop, @items);
+  return 
+  $zoom->repeat_contents([
+    map {
+      $item=$_;
+      sub {
+        $loop->($_, $item);
+      } @{$self->items};
+    ]
+  );
+}
+
+sub items {
+ return [
+  { name=>'John' },
+  { name=>'Joe' },
+ ];
+}
+
+sub html {
+  return q[<lace.ul
+      items='$self->items' 
+      loop='$inner->replace_contents("li", $_->{name})' >
+    <li>Hi </li>
+  </lace.ul>];
+}
+
+sub html {
+  return q[<lace.ul
+      list_items='$self->items' 
+    <li>Hi <this.name />!</li>
+  </lace.ul>];
+}
+
+sub items {
+  return [
+    {name=>'John', age=>25},
+    {name=>'Jane', age=>35},
+  ];
+}
+
+sub html {
+  return q[
+    <lace.ul list_items='$self->items'>
+      <li>
+        <view.PersonTagLine name='$this->{name}' age='$this->{age}' />
+      </li>
+  </lace.ul>];
+}
+
+
+sub html {
+  return q[
+    <lace.ul for='$item in $self->items'>
+      <li>
+        <view.PersonTagLine name='$item->{name}' age='$item->{age}' />
+      </li>
+  </lace.ul>];
+}
+
+<span {class}="$self->class">FFF</span>
+
+<lace.ul>
+  <lace.li>.map {
+    $li->replace_contents($_->{name});
+  } $self->items;
+</lace.ul>
+
+
+<lace.ul>
+  <lace.li map = 'sub {
+    $li->replace_contents($_->{name});
+  } $self->items' />
+</lace.ul>

@@ -45,7 +45,7 @@ has 'component_packages' => (
         ($self->component_namespace);
 
     my %packages = ();
-    foreach my $search(@search) {
+    foreach my $search(@search, 'Template::Lace2::Component') {
       my @packages = Module::Pluggable::Object->new(
         require => 1,
         search_path => $search,

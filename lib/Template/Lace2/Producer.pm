@@ -5,13 +5,14 @@ use Scalar::Util;
 use base qw(HTML::Zoom::SubObject);
 
 sub html_from_stream {
-  my ($self, $stream, $data, $parent) = @_;
+  my ($self, $stream, $ctx) = @_;
   my @events = $self->_zconfig->stream_utils->stream_to_array($stream);
-  return $self->html_from_events(\@events, $data, $parent);
+  return $self->html_from_events(\@events, $ctx);
 }
 
 sub html_from_events {
-  my ($self, $events, $data, $parent) = @_;
+  my ($self, $events, $ctx) = @_;
+
   my @html = ();
   while(@$events) {
     my $event = shift(@$events);
@@ -40,67 +41,116 @@ sub html_from_events {
 
       # process attrs that may be data paths.  Basically if the attr is
       # and array ref that is the signal its a data path we need to resolve
-      # against the root data context or the current parent context.
+      # against the root container context or the current parent context.
 
       my %args = %{$event->{attrs}};
       foreach my $key(%args) {
         next unless $args{$key};
 
-        warn "..." if $key eq '@';
-
-        if(ref($args{$key})) {
+        if(ref($args{$key}) eq 'ARRAY') {
           my ($prefix, @parts) = @{$args{$key}};
           next unless $prefix;
-          my $ctx;
-          $ctx = $data if $prefix eq '$' or $prefix eq 'self';
-          $ctx = $parent if $prefix eq '$$' or $prefix eq 'this';
-          die "Not sure what a prefix of '$prefix' is" unless $ctx;
-          foreach my $part(@parts) {
-            if(Scalar::Util::blessed $ctx) {
-              $ctx = $ctx->$part;
-            } elsif(ref($ctx) eq 'HASH') {
-              $ctx = $ctx->{$part};
-            } elsif(ref($ctx) eq 'ARRAY') {
-              $ctx = $ctx->[$part];
-            } else {
-              die "No '$part' for this ctx $ctx";
+          my $data;
+          $data = ($ctx->{container}||die "No Container!") if $prefix eq '$' or $prefix eq 'self';
+          $data = $ctx->{parent} if $prefix eq '$$' or $prefix eq 'this';
+
+          #die "Can't figure out what to do with prefix of '$prefix' for '@parts'" unless $data;
+
+          if($data) {
+            foreach my $part(@parts) {
+              if(Scalar::Util::blessed $data) {
+                $data = $data->$part;
+              } elsif(ref($data) eq 'HASH') {
+                $data = $data->{$part};
+              } elsif(ref($data) eq 'ARRAY') {
+                $data = $data->[$part];
+              } else {
+                die "No '$part' for this ctx $data";
+              }
             }
+            $args{$key} = $data;
+          } 
+          if($key eq '.') {
+          %args = %{$data};
           }
-          $args{$key} = $ctx;
         }
       }
 
-      
-
       # Begin command handling
-      if(($target eq 'lace') || ($target eq 'view')) {   ## lace. or view.
-        $args{inner_events} = \@inner_events if @inner_events;
-        $args{container} = $data;
-        $args{parent} = $parent;
-        my $command_namespace = $command; $command_namespace=~s/-/::/g;
-        my $html = $self->_zconfig->registry->create($command_namespace, %args)->to_html($data);
+      if($target eq 'lace') {
+        if($command eq 'ctx') {
+          my $html = $self->html_from_events(\@inner_events, \%args);
+          push @html, $html;
+        }
+      } elsif($target eq 'view') {
+        $args{inner_events_cb} = sub {
+          my ($this_component, $parent) = @_;
+          return +{
+            attr_names => [
+              qw/container parent/, 
+              grep { $_ ne 'container' || $_ ne 'container'} keys %args],
+            attrs => {
+              %args,
+              container => $parent,
+              parent => $this_component,
+            },
+            command => "ctx",
+            command_id => "lace_ctx_XX",
+            is_in_place_close => "/",
+            name => "lace.ctx",
+            raw => "<lace.ctx />",
+            target => "lace",
+            type => "OPEN",
+          }, @inner_events, +{
+            name=>'lace.ctx',
+            target=>'lace',
+            command=>'ctx',
+            command_id=>'lace_ctx_XX',
+            is_in_place_close=>1,
+            raw=>'',
+            type=>'CLOSE',
+          };
+        } if @inner_events;
+        $args{parent} = $ctx->{container};
+        my $command_ns = $command; $command_ns=~s/-/::/g;
+        my $inner_component = $self->_zconfig->registry->create($command_ns, (%args));
+        my $html = $inner_component->to_html();
         push @html, $html;
       } elsif($target eq 'self') {  ## self.$method
-        if(my $cb = $data->can($command)) {
-          my $z = HTML::Zoom->new({ zconfig => $self->_zconfig })->from_events(\@inner_events);
-          my $response = $cb->($data, $z, %args);
+        if(my $cb = $ctx->{container}->can($command)) {
+          my @args = ();
+          push @args, HTML::Zoom->new({zconfig => $self->_zconfig})->from_events(\@inner_events)
+            if @inner_events;
+          push @args, %args if %args;
+          my $response = $cb->($ctx->{container}, @args);
           my $method_events = Scalar::Util::blessed($response) ?
             $response->to_events :
               $self->_zconfig->registry->_zoom($response)->to_events;
           unshift @$events, @{$method_events};
         } else {
-          die "$data can't supported $command";
+          die "$ctx->{container} can't supported $command";
         }
-      } elsif($target eq 'this') {  ## this.$method (UNTESTED)
-        if(my $cb = $parent->can($command)) {
-          my $z = HTML::Zoom->new({ zconfig => $self->_zconfig })->from_events(\@inner_events);
-          my $response = $cb->($parent, $z, %args);
-          my $method_events = Scalar::Util::blessed($response) ?
-            $response->to_events :
-              $self->_zconfig->registry->_zoom($response)->to_events;
-          unshift @$events, @{$method_events};
-        } else {
-          die "$parent can't supported $command";
+      } elsif($target eq 'this') {
+        if(Scalar::Util::blessed($ctx->{parent})) {
+          if(my $cb = $ctx->{parent}->can($command)) {
+            my @args = ();
+            push @args, HTML::Zoom->new({zconfig => $self->_zconfig})->from_events(\@inner_events)
+              if @inner_events;
+            push @args, %args if %args;
+            my $response = $cb->($ctx->{parent}, @args);
+            my $method_events = Scalar::Util::blessed($response) ?
+              $response->to_events :
+                $self->_zconfig->registry->_zoom($response)->to_events;
+            unshift @$events, @{$method_events};
+          } else {
+            die "$ctx->{parent} can't supported $command";
+          }
+        } elsif(ref($ctx->{parent}) eq 'HASH') {
+          if(exists $ctx->{parent}->{$command}) {
+            push @html, $ctx->{parent}->{$command}; ## TODO surely this isn;t enough
+          } else {
+            die "$ctx->{parent} has no key called $command";
+          }
         }
       } else {
         die "Not sure how to generate HTML for command '$command'";
